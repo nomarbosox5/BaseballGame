@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title>Cronin Baseball</title>
+<style>
+:root{--gold:#f1c40f;--blue:#3498db;--grass:#1b3318;--board:#111;--wood:#8b5a2b;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{margin:0;background:#000;color:#fff;font-family:'Inter',sans-serif;overflow:hidden;height:100svh;display:flex;flex-direction:column;}
+#banner{height:3.5vh;background:#000;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--gold);border-bottom:1px solid #222;}
+#v-frame{width:100%;height:63vh;overflow:hidden;position:relative;background:#000;}
+#v-frame canvas{position:absolute!important;width:167%!important;height:167%!important;left:-33.5%!important;top:-66.8%!important;}
+#deck{height:33.5vh;display:grid;grid-template-columns:0.95fr 1.05fr;background:#050505;padding:4px 8px;gap:8px;padding-bottom:env(safe-area-inset-bottom);}
+.panel{display:flex;flex-direction:column;align-items:center;justify-content:space-between;height:100%;}
+#scoreboard-strip{width:100%;height:5vh;background:var(--board);border:1px solid #333;border-radius:4px;display:flex;align-items:center;justify-content:space-around;padding:0 5px;}
+.stat-unit{display:flex;flex-direction:column;align-items:center;}
+.stat-label{font-size:7px;color:#666;font-weight:800;}
+.dots{display:flex;gap:2px;margin-top:2px;}
+.dot{width:6px;height:6px;border-radius:50%;background:#222;border:1px solid #333;}
+.b-on{background:var(--blue);box-shadow:0 0 5px var(--blue);}
+.s-on{background:var(--gold);box-shadow:0 0 5px var(--gold);}
+.o-on{background:#e74c3c;box-shadow:0 0 5px #e74c3c;}
+#mini-diamond{width:22px;height:22px;position:relative;transform:rotate(45deg);}
+.m-base{position:absolute;width:5px;height:5px;border:1px solid #333;background:#111;}
+#mb-1{top:0;right:0;}#mb-2{top:0;left:0;}#mb-3{bottom:0;left:0;}
+.m-on{background:var(--gold);border-color:#fff;}
+#field-container{width:100%;flex-grow:1;background:#000;position:relative;overflow:hidden;margin-top:4px;border-radius:4px;border:1px solid #222;}
+.field-svg{width:100%;height:100%;}
+.hit-dot{position:absolute;width:16px;height:16px;background:rgba(0,0,0,0.9);border:1px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:900;transform:translate(-50%,-50%);}
+#result-card{width:100%;height:6.5vh;background:var(--board);border:1.5px solid #444;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;text-align:center;}
+#res-main{color:var(--gold);font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:1px;}
+#res-sub{color:#aaa;font-size:8.5px;font-family:'Courier New',Courier,monospace;margin-top:2px;font-weight:600;}
+#swing-zone{width:100%;flex-grow:1;display:flex;align-items:center;justify-content:center;position:relative;touch-action:none;background:rgba(255,255,255,0.02);border-radius:4px;margin-top:4px;}
+#strike-zone{width:80px;height:120px;border:2px solid #fff;background:rgba(255,255,255,0.03);position:relative;pointer-events:none;border-radius:2px;}
+.ball-asset{position:absolute;width:22px;height:22px;background:#fff;border-radius:50%;transform:translate(-50%,-50%);z-index:5;box-shadow:0 0 10px #fff;}
+.bat-asset{position:absolute;width:30px;height:30px;background:var(--wood);border-radius:50%;transform:translate(-50%,-50%);z-index:4;border:2px solid #000;}
+.pitch-dot{position:absolute;width:22px;height:22px;background:rgba(255,255,255,0.3);border:1.5px solid #fff;border-radius:50%;transform:translate(-50%,-50%);z-index:1;}
+</style>
+</head>
+<body>
+<div id="banner">Cronin Baseball</div>
+<div id="v-frame"></div>
+<div id="deck">
+  <div class="panel">
+    <div id="scoreboard-strip">
+      <div class="stat-unit"><span class="stat-label">B</span><div class="dots" id="b-dots"></div></div>
+      <div class="stat-unit"><span class="stat-label">S</span><div class="dots" id="s-dots"></div></div>
+      <div class="stat-unit"><span class="stat-label">O</span><div class="dots" id="o-dots"></div></div>
+      <div id="mini-diamond"><div id="mb-2" class="m-base"></div><div id="mb-1" class="m-base"></div><div id="mb-3" class="m-base"></div></div>
+      <div class="stat-unit"><span class="stat-label">R</span><span style="font-size:11px;font-weight:900;" id="r-val">0</span></div>
+    </div>
+    <div id="field-container">
+      <svg class="field-svg" id="field-svg" viewBox="0 0 100 100">
+        <path d="M50 98 L5 48 A 65 65 0 0 1 95 48 L50 98" fill="var(--grass)"/>
+        <line x1="50" y1="98" x2="5" y2="48" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+        <line x1="50" y1="98" x2="95" y2="48" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+      </svg>
+    </div>
+  </div>
+  <div class="panel">
+    <div id="result-card"><div id="res-main">READY</div><div id="res-sub"></div></div>
+    <div id="swing-zone"><div id="strike-zone"></div></div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+
+var PITCHES = [{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:0.6439636036439949,“vy0”:-42.24528,“vz0”:-2.3504622144196485,“ax”:0.3857831620519326,“ay”:7.9248,“az”:-3.2483214451171447,“px”:0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36288,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Groundout”,“pitcher”:“Bradish”,“x_norm”:-0.3176,“y_norm”:0.1,“t”:2.263},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:-1.0713846616123768,“vy0”:-43.049952000000005,“vz0”:-2.2561448706434777,“ax”:7.230646255989082,“ay”:7.9248,“az”:-4.182799223119604,“px”:-0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.35561,“s”:“L”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Ball”,“pitcher”:“Bradish”,“x_norm”:0.3176,“y_norm”:0.1,“t”:6.518},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:-0.6914120086507162,“vy0”:-42.558208,“vz0”:-2.1856486182232358,“ax”:5.487139479194903,“ay”:7.9248,“az”:-4.319495720805097,“px”:-0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36002,“s”:“L”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“SwStr”,“pitcher”:“Bradish”,“x_norm”:0.2118,“y_norm”:0.1,“t”:10.779},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:1.193649355340102,“vy0”:-38.981888,“vz0”:-0.5621064094780277,“ax”:-5.837090561438791,“ay”:7.9248,“az”:-10.779483626906467,“px”:-0.1524,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.39579,“s”:“R”,“type”:“Slider”,“color”:”#00CFFF”,“result”:“Foul”,“pitcher”:“Bradish”,“x_norm”:0.5294,“y_norm”:0.1,“t”:15.074},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:1.3187009599674147,“vy0”:-38.89248,“vz0”:-0.4869951223490263,“ax”:-6.453338985763018,“ay”:7.9248,“az”:-11.097302997152605,“px”:-0.1524,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.39678,“s”:“R”,“type”:“Slider”,“color”:”#00CFFF”,“result”:“Ball”,“pitcher”:“Bradish”,“x_norm”:0.5294,“y_norm”:0.1,“t”:19.371},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:-0.5583580284767566,“vy0”:-43.13936,“vz0”:-2.4120679856667464,“ax”:4.841878084213928,“ay”:7.9248,“az”:-3.3507977543814307,“px”:-0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.35483,“s”:“L”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“Foul”,“pitcher”:“Bradish”,“x_norm”:0.2118,“y_norm”:0.1,“t”:23.626},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:0.7663163500198884,“vy0”:-38.221920000000004,“vz0”:0.28683831891950656,“ax”:-2.485322708982236,“ay”:7.9248,“az”:-14.466615279341692,“px”:-0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.40438,“s”:“L”,“type”:“Curveball”,“color”:”#7B68EE”,“result”:“Ball”,“pitcher”:“Bradish”,“x_norm”:0.2118,“y_norm”:0.1,“t”:27.93},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:-0.6271487277434191,“vy0”:-42.960544,“vz0”:-2.100837468825498,“ax”:5.198946857747589,“ay”:7.9248,“az”:-5.007607331309918,“px”:-0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.35641,“s”:“L”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“Groundout”,“pitcher”:“Bradish”,“x_norm”:0.2118,“y_norm”:0.1,“t”:32.187},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.81334754176558,“vy0”:-43.005248,“vz0”:-2.306837500950746,“ax”:0.0,“ay”:7.9248,“az”:-3.393670108901232,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.35601,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:36.443},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.09799446142408617,“vy0”:-42.24528,“vz0”:-2.196470917896085,“ax”:-3.8578316205193266,“ay”:7.9248,“az”:-3.634104607169079,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36288,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Called Strike”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:40.706},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.3685275258595533,“vy0”:-41.261792,“vz0”:-1.5737070285993562,“ax”:-6.601173195108572,“ay”:7.9248,“az”:-6.5060486024457145,“px”:-0.1524,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.37218,“s”:“R”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:0.5294,“y_norm”:0.1,“t”:44.978},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.23393048572331857,“vy0”:-41.574720000000006,“vz0”:-2.0978598759431586,“ax”:-2.981961809702077,“ay”:7.9248,“az”:-3.842711580595846,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36917,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:49.247},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.041568270774067134,“vy0”:-41.842943999999996,“vz0”:-2.1374469577070094,“ax”:-4.535226076499149,“ay”:7.9248,“az”:-3.7596670980011355,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36663,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Flyout”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:53.514},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-1.0398036359534135,“vy0”:-34.064448000000006,“vz0”:0.5482942168772209,“ax”:2.6495732416156637,“ay”:7.9248,“az”:-12.215338146923331,“px”:-0.030480000000000004,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.45924,“s”:“L”,“type”:“Curveball”,“color”:”#7B68EE”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:0.1059,“y_norm”:0.1,“t”:57.873},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.2774399540053594,“vy0”:-41.887648000000006,“vz0”:-2.3521060942826857,“ax”:-2.651626459397005,“ay”:7.9248,“az”:-2.609363381636702,“px”:0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36621,“s”:“L”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:-0.3176,“y_norm”:0.1,“t”:62.139},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-1.0995121223117357,“vy0”:-36.16553600000001,“vz0”:-0.24585470637916032,“ax”:3.3018069735715394,“ay”:7.9248,“az”:-10.08178578113096,“px”:0.0,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.42968,“s”:“L”,“type”:“Sweeper”,“color”:”#00BBFF”,“result”:“Called Strike”,“pitcher”:“Early”,“x_norm”:-0.0,“y_norm”:0.1,“t”:66.469},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.49868951424573005,“vy0”:-38.847776,“vz0”:-0.9802063239810327,“ax”:0.0,“ay”:7.9248,“az”:-8.197333199537692,“px”:-0.030480000000000004,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.39728,“s”:“L”,“type”:“Slider”,“color”:”#00CFFF”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:0.1059,“y_norm”:0.1,“t”:70.766},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.8199055911253651,“vy0”:-41.306496,“vz0”:-2.058077569761961,“ax”:-5.51382200097305,“ay”:7.9248,“az”:-3.9252250656287475,“px”:0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.37175,“s”:“L”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Called Strike”,“pitcher”:“Early”,“x_norm”:-0.3176,“y_norm”:0.1,“t”:75.038},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.6912135639995295,“vy0”:-41.753536000000004,“vz0”:-2.1933940432773356,“ax”:-4.890622428141821,“ay”:7.9248,“az”:-3.411205870891465,“px”:0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36747,“s”:“L”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Called Strike”,“pitcher”:“Early”,“x_norm”:-0.3176,“y_norm”:0.1,“t”:79.305},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.9260458852639325,“vy0”:-42.33468800000001,“vz0”:-1.9289104675627822,“ax”:3.4878350589504326,“ay”:7.9248,“az”:-5.156188454732757,“px”:0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36206,“s”:“L”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“Flyout”,“pitcher”:“Early”,“x_norm”:-0.2118,“y_norm”:0.1,“t”:83.567},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.6912135639995295,“vy0”:-41.753536000000004,“vz0”:-2.1933940432773356,“ax”:-4.890622428141821,“ay”:7.9248,“az”:-3.411205870891465,“px”:0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36747,“s”:“L”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:-0.3176,“y_norm”:0.1,“t”:87.835},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.8199055911253651,“vy0”:-41.306496,“vz0”:-2.058077569761961,“ax”:-5.51382200097305,“ay”:7.9248,“az”:-3.9252250656287475,“px”:0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.37175,“s”:“L”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Flyout”,“pitcher”:“Early”,“x_norm”:-0.3176,“y_norm”:0.1,“t”:92.106},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:0.4827356383521163,“vy0”:-41.664128,“vz0”:-1.9179827907661686,“ax”:-1.4978865276247801,“ay”:7.9248,“az”:-5.31297561712566,“px”:-0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36832,“s”:“L”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Double”,“pitcher”:“Bradish”,“x_norm”:0.3176,“y_norm”:0.1,“t”:96.375},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:0.8298642401908701,“vy0”:-37.73017600000001,“vz0”:-0.34230274165622626,“ax”:-4.227940038934185,“ay”:7.9248,“az”:-11.014618068266909,“px”:-0.18288000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.41014,“s”:“L”,“type”:“Slider”,“color”:”#00CFFF”,“result”:“Ball”,“pitcher”:“Bradish”,“x_norm”:0.6353,“y_norm”:0.1,“t”:100.685},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:0.7459994970422926,“vy0”:-36.746688000000006,“vz0”:-0.3362757913892107,“ax”:-3.704873043087702,“ay”:7.9248,“az”:-10.37661566816734,“px”:-0.18288000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.4222,“s”:“L”,“type”:“Slider”,“color”:”#00CFFF”,“result”:“Ball”,“pitcher”:“Bradish”,“x_norm”:0.6353,“y_norm”:0.1,“t”:105.007},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-1.2379481349155235,“vy0”:-36.38905600000001,“vz0”:0.37851028279871435,“ax”:3.625917021740665,“ay”:7.9248,“az”:-13.153635527760615,“px”:-0.030480000000000004,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.42677,“s”:“L”,“type”:“Curveball”,“color”:”#7B68EE”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:0.1059,“y_norm”:0.1,“t”:109.334},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-1.4740231407370743,“vy0”:-36.612576000000004,“vz0”:-0.18644076509909627,“ax”:5.088703807324075,“ay”:7.9248,“az”:-10.65475250122068,“px”:0.0,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.4239,“s”:“L”,“type”:“Sweeper”,“color”:”#00BBFF”,“result”:“Groundout”,“pitcher”:“Early”,“x_norm”:-0.0,“y_norm”:0.1,“t”:113.658},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.23393048572331857,“vy0”:-41.574720000000006,“vz0”:-2.0978598759431586,“ax”:-2.981961809702077,“ay”:7.9248,“az”:-3.842711580595846,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36917,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:117.927},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.3685275258595533,“vy0”:-41.261792,“vz0”:-1.5737070285993562,“ax”:-6.601173195108572,“ay”:7.9248,“az”:-6.5060486024457145,“px”:-0.1524,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.37218,“s”:“R”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:0.5294,“y_norm”:0.1,“t”:122.199},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.09799446142408617,“vy0”:-42.24528,“vz0”:-2.196470917896085,“ax”:-3.8578316205193266,“ay”:7.9248,“az”:-3.634104607169079,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36288,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Called Strike”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:126.462},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.49464260552476713,“vy0”:-36.836096000000005,“vz0”:-0.21553351722266764,“ax”:-2.8651780576841963,“ay”:7.9248,“az”:-10.66618861730526,“px”:0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.42107,“s”:“R”,“type”:“Changeup”,“color”:”#32CD32”,“result”:“Single”,“pitcher”:“Early”,“x_norm”:-0.4235,“y_norm”:0.1,“t”:130.783},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.09721532649301866,“vy0”:-41.932352,“vz0”:-2.1506000164256265,“ax”:-3.7967297545975534,“ay”:7.9248,“az”:-3.731867592643916,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36579,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Foul”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:135.049},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.041568270774067134,“vy0”:-41.842943999999996,“vz0”:-2.1374469577070094,“ax”:-4.535226076499149,“ay”:7.9248,“az”:-3.7596670980011355,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36663,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Flyout”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:139.316},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:0.9041804408049781,“vy0”:-37.73017600000001,“vz0”:-0.34230274165622626,“ax”:-4.227940038934185,“ay”:7.9248,“az”:-11.014618068266909,“px”:-0.1524,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.41014,“s”:“R”,“type”:“Slider”,“color”:”#00CFFF”,“result”:“Ball”,“pitcher”:“Bradish”,“x_norm”:0.5294,“y_norm”:0.1,“t”:143.626},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:0.8181929967560629,“vy0”:-36.746688000000006,“vz0”:-0.3362757913892107,“ax”:-3.704873043087702,“ay”:7.9248,“az”:-10.37661566816734,“px”:-0.1524,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.4222,“s”:“R”,“type”:“Slider”,“color”:”#00CFFF”,“result”:“Ball”,“pitcher”:“Bradish”,“x_norm”:0.5294,“y_norm”:0.1,“t”:147.948},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:-0.1797155266398777,“vy0”:-41.753536000000004,“vz0”:-1.9998542453574668,“ax”:5.2668241533835,“ay”:7.9248,“az”:-4.916012771858179,“px”:0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36747,“s”:“R”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“Ball”,“pitcher”:“Bradish”,“x_norm”:-0.4235,“y_norm”:0.1,“t”:152.215},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:0.4827356383521163,“vy0”:-41.664128,“vz0”:-1.9179827907661686,“ax”:-1.4978865276247801,“ay”:7.9248,“az”:-5.31297561712566,“px”:-0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36832,“s”:“L”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Double”,“pitcher”:“Bradish”,“x_norm”:0.3176,“y_norm”:0.1,“t”:156.484},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:0.7957662368934011,“vy0”:-38.981888,“vz0”:-0.8829798920963344,“ax”:-4.215676516594682,“ay”:7.9248,“az”:-9.158069582062357,“px”:-0.18288000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.39579,“s”:“L”,“type”:“Slider”,“color”:”#00CFFF”,“result”:“Foul”,“pitcher”:“Bradish”,“x_norm”:0.6353,“y_norm”:0.1,“t”:160.779},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:0.7379758889694548,“vy0”:-39.294816000000004,“vz0”:-0.9891453322356529,“ax”:-3.959607772956841,“ay”:7.9248,“az”:-8.81673325676079,“px”:-0.18288000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.39237,“s”:“L”,“type”:“Slider”,“color”:”#00CFFF”,“result”:“Double Play”,“pitcher”:“Bradish”,“x_norm”:0.6353,“y_norm”:0.1,“t”:165.072},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:-0.2644745261042447,“vy0”:-42.02176000000001,“vz0”:-2.177651731161297,“ax”:3.051313061184584,“ay”:7.9248,“az”:-4.085423210278905,“px”:-0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36495,“s”:“L”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“Called Strike”,“pitcher”:“Bradish”,“x_norm”:0.2118,“y_norm”:0.1,“t”:169.337},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:-0.5465890628267264,“vy0”:-42.289984,“vz0”:-2.2870938562059115,“ax”:4.639916811905748,“ay”:7.9248,“az”:-3.620079450792335,“px”:-0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36247,“s”:“L”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“SwStr”,“pitcher”:“Bradish”,“x_norm”:0.2118,“y_norm”:0.1,“t”:173.599},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:0.80171888116154,“vy0”:-39.250112,“vz0”:-0.9831663876772567,“ax”:-4.278982245232292,“ay”:7.9248,“az”:-8.819177758792549,“px”:-0.18288000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.39286,“s”:“L”,“type”:“Slider”,“color”:”#00CFFF”,“result”:“Ball”,“pitcher”:“Bradish”,“x_norm”:0.6353,“y_norm”:0.1,“t”:177.892},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:-0.04204531252513258,“vy0”:-42.289984,“vz0”:-2.2170183353306903,“ax”:4.639916811905748,“ay”:7.9248,“az”:-4.006739185117815,“px”:0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36247,“s”:“R”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“Foul”,“pitcher”:“Bradish”,“x_norm”:-0.4235,“y_norm”:0.1,“t”:182.155},{“x0”:-0.16764,“y0”:15.24,“z0”:1.85928,“vx0”:-0.2562750718008497,“vy0”:-42.91584,“vz0”:-2.236977223714325,“ax”:5.985428735284577,“ay”:7.9248,“az”:-4.220235047067728,“px”:0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.3568,“s”:“R”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“Groundout”,“pitcher”:“Bradish”,“x_norm”:-0.4235,“y_norm”:0.1,“t”:186.411},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.8406923014091429,“vy0”:-34.064448000000006,“vz0”:0.5482942168772209,“ax”:2.6495732416156637,“ay”:7.9248,“az”:-12.215338146923331,“px”:0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.45924,“s”:“R”,“type”:“Curveball”,“color”:”#7B68EE”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:-0.2118,“y_norm”:0.1,“t”:190.771},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.3051839494058952,“vy0”:-41.887648000000006,“vz0”:-2.3521060942826857,“ax”:-2.651626459397005,“ay”:7.9248,“az”:-2.609363381636702,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36621,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Flyout”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:195.037},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-1.3664934620325238,“vy0”:-35.49497600000001,“vz0”:0.07803835556530742,“ax”:4.487829105218506,“ay”:7.9248,“az”:-11.126584936828973,“px”:0.0,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.43867,“s”:“L”,“type”:“Sweeper”,“color”:”#00BBFF”,“result”:“Called Strike”,“pitcher”:“Early”,“x_norm”:-0.0,“y_norm”:0.1,“t”:199.375},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-1.5421891772912775,“vy0”:-36.791392,“vz0”:-0.1494895949489156,“ax”:5.429317650085521,“ay”:7.9248,“az”:-10.949649442123269,“px”:0.0,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.42163,“s”:“L”,“type”:“Sweeper”,“color”:”#00BBFF”,“result”:“Called Strike”,“pitcher”:“Early”,“x_norm”:-0.0,“y_norm”:0.1,“t”:203.697},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-1.5710173947911517,“vy0”:-37.417248,“vz0”:-0.10613141203024655,“ax”:5.634195816159128,“ay”:7.9248,“az”:-11.585854931418673,“px”:0.0,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.4139,“s”:“L”,“type”:“Sweeper”,“color”:”#00BBFF”,“result”:“Single”,“pitcher”:“Early”,“x_norm”:-0.0,“y_norm”:0.1,“t”:208.011},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.23906730271779125,“vy0”:-42.42409600000001,“vz0”:-2.3631974006920493,“ax”:-3.114359874057161,“ay”:7.9248,“az”:-2.7993254833713883,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36124,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Called Strike”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:212.272},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.44936463942671256,“vy0”:-37.998400000000004,“vz0”:-0.3636385767864189,“ax”:-2.760397243644732,“ay”:7.9248,“az”:-10.726767614548244,“px”:0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.40697,“s”:“R”,“type”:“Changeup”,“color”:”#32CD32”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:-0.4235,“y_norm”:0.1,“t”:216.579},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.8336832300928964,“vy0”:-35.94201600000001,“vz0”:0.5479132872722337,“ax”:2.7140742296558975,“ay”:7.9248,“az”:-13.606339121518257,“px”:0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.43263,“s”:“R”,“type”:“Curveball”,“color”:”#7B68EE”,“result”:“SwStr”,“pitcher”:“Early”,“x_norm”:-0.2118,“y_norm”:0.1,“t”:220.912},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.6674902074650315,“vy0”:-36.43376,“vz0”:0.6117481488358394,“ax”:1.957708701234317,“ay”:7.9248,“az”:-14.281397945678439,“px”:0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.42619,“s”:“R”,“type”:“Curveball”,“color”:”#7B68EE”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:-0.2118,“y_norm”:0.1,“t”:225.238},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.09788318439370129,“vy0”:-42.200576000000005,“vz0”:-2.259850034590929,“ax”:-3.8490751193360615,“ay”:7.9248,“az”:-3.2632074971286955,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36329,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Foul”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:229.501},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.1285094536258302,“vy0”:-39.026592,“vz0”:-1.0045769143690955,“ax”:-0.3250921195119957,“ay”:7.9248,“az”:-8.181174602440022,“px”:0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.3953,“s”:“R”,“type”:“Slider”,“color”:”#00CFFF”,“result”:“GIDP”,“pitcher”:“Early”,“x_norm”:-0.3176,“y_norm”:0.1,“t”:233.797},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.9307984375044854,“vy0”:-40.814752,“vz0”:-1.3775790066150277,“ax”:-6.447953583948258,“ay”:7.9248,“az”:-7.299097695131233,“px”:0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.37658,“s”:“L”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“Called Strike”,“pitcher”:“Early”,“x_norm”:-0.2118,“y_norm”:0.1,“t”:238.073},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-1.0651356492874642,“vy0”:-36.567872,“vz0”:0.29811520818073495,“ax”:2.8194611537531244,“ay”:7.9248,“az”:-12.908042469128437,“px”:-0.030480000000000004,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.42447,“s”:“L”,“type”:“Curveball”,“color”:”#7B68EE”,“result”:“SwStr”,“pitcher”:“Early”,“x_norm”:0.1059,“y_norm”:0.1,“t”:242.398},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.6959855950111703,“vy0”:-42.02176000000001,“vz0”:-2.233330578762191,“ax”:-4.958383724424949,“ay”:7.9248,“az”:-3.3225949449827588,“px”:0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36495,“s”:“L”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Called Strike”,“pitcher”:“Early”,“x_norm”:-0.3176,“y_norm”:0.1,“t”:246.663},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.12177100311158681,“vy0”:-37.149024,“vz0”:-0.13415211635883312,“ax”:-3.210825771394153,“ay”:7.9248,“az”:-11.266101459724615,“px”:-0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.41718,“s”:“L”,“type”:“Changeup”,“color”:”#32CD32”,“result”:“Called Strike”,“pitcher”:“Early”,“x_norm”:0.2118,“y_norm”:0.1,“t”:250.98},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-1.0651356492874642,“vy0”:-36.567872,“vz0”:0.29811520818073495,“ax”:2.8194611537531244,“ay”:7.9248,“az”:-12.908042469128437,“px”:-0.030480000000000004,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.42447,“s”:“L”,“type”:“Curveball”,“color”:”#7B68EE”,“result”:“SwStr”,“pitcher”:“Early”,“x_norm”:0.1059,“y_norm”:0.1,“t”:255.304},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.9307984375044854,“vy0”:-40.814752,“vz0”:-1.3775790066150277,“ax”:-6.447953583948258,“ay”:7.9248,“az”:-7.299097695131233,“px”:0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.37658,“s”:“L”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“Called Strike”,“pitcher”:“Early”,“x_norm”:-0.2118,“y_norm”:0.1,“t”:259.581},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.3135743638717096,“vy0”:-42.960544,“vz0”:-2.0865840886495115,“ax”:-6.798622813977618,“ay”:7.9248,“az”:-4.607688342252411,“px”:-0.1524,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.35641,“s”:“R”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“Foul”,“pitcher”:“Early”,“x_norm”:0.5294,“y_norm”:0.1,“t”:263.837},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.2607810887765399,“vy0”:-37.819584,“vz0”:-0.2170053277088102,“ax”:0.0,“ay”:7.9248,“az”:-11.324453871404414,“px”:0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.40908,“s”:“R”,“type”:“Curveball”,“color”:”#7B68EE”,“result”:“Foul”,“pitcher”:“Early”,“x_norm”:-0.2118,“y_norm”:0.1,“t”:268.146},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.3262096367408853,“vy0”:-38.17721600000001,“vz0”:-0.07231102003432215,“ax”:0.3098725920846933,“ay”:7.9248,“az”:-12.285615936677548,“px”:0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.40489,“s”:“R”,“type”:“Curveball”,“color”:”#7B68EE”,“result”:“Triple”,“pitcher”:“Early”,“x_norm”:-0.2118,“y_norm”:0.1,“t”:272.451},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.7688252154025488,“vy0”:-42.91584,“vz0”:-2.222739719725389,“ax”:-5.985428735284577,“ay”:7.9248,“az”:-3.821206464715423,“px”:0.06096000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.3568,“s”:“L”,“type”:“Sinker”,“color”:”#FF8C00”,“result”:“Single”,“pitcher”:“Early”,“x_norm”:-0.2118,“y_norm”:0.1,“t”:276.708},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.35831856336396584,“vy0”:-43.18406399999999,“vz0”:-2.4759276895993585,“ax”:-3.2350788749912804,“ay”:7.9248,“az”:-2.5277077312696195,“px”:0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.35443,“s”:“L”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:-0.3176,“y_norm”:0.1,“t”:280.962},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.28379735833999775,“vy0”:-42.78172800000001,“vz0”:-2.4164240382026714,“ax”:-2.774540276601022,“ay”:7.9248,“az”:-2.6721030601688014,“px”:0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.358,“s”:“L”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“SwStr”,“pitcher”:“Early”,“x_norm”:-0.3176,“y_norm”:0.1,“t”:285.22},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-1.1544652484321125,“vy0”:-35.71849600000001,“vz0”:0.5734240083340627,“ax”:3.2122465645175673,“ay”:7.9248,“az”:-13.554256191937164,“px”:-0.030480000000000004,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.43563,“s”:“L”,“type”:“Curveball”,“color”:”#7B68EE”,“result”:“HomeRun”,“pitcher”:“Early”,“x_norm”:0.1059,“y_norm”:0.1,“t”:289.556},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-1.2011103089748243,“vy0”:-35.71849600000001,“vz0”:-0.3011708768417801,“ax”:3.7476209919371626,“ay”:7.9248,“az”:-9.538947986290204,“px”:0.0,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.43563,“s”:“L”,“type”:“Sweeper”,“color”:”#00BBFF”,“result”:“Foul”,“pitcher”:“Early”,“x_norm”:-0.0,“y_norm”:0.1,“t”:293.892},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.5644179662454827,“vy0”:-42.558208,“vz0”:-2.2420904148477843,“ax”:-4.311323876510281,“ay”:7.9248,“az”:-3.535618652348683,“px”:0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36002,“s”:“L”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:-0.3176,“y_norm”:0.1,“t”:298.152},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.09888434822290341,“vy0”:-42.602912,“vz0”:-2.3192190116762075,“ax”:-3.142572496695623,“ay”:7.9248,“az”:-3.1286686445218,“px”:0.0,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.35961,“s”:“L”,“type”:“Flyout”,“color”:”#ffffff”,“result”:“Flyout”,“pitcher”:“Early”,“x_norm”:-0.0,“y_norm”:0.1,“t”:302.411},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.20617049577151694,“vy0”:-41.53001600000001,“vz0”:-2.2974136628320987,“ax”:-2.231300437095701,“ay”:7.9248,“az”:-2.74085048253028,“px”:0.09144000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.3696,“s”:“L”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“SwStr”,“pitcher”:“Early”,“x_norm”:-0.3176,“y_norm”:0.1,“t”:306.681},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:0.6169291027559399,“vy0”:-36.925504,“vz0”:-0.16663024949644306,“ax”:-3.4565886333292366,“ay”:7.9248,“az”:-10.958831411109747,“px”:0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.41995,“s”:“R”,“type”:“Changeup”,“color”:”#32CD32”,“result”:“Groundout”,“pitcher”:“Early”,“x_norm”:-0.4235,“y_norm”:0.1,“t”:311.001},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.307982593047128,“vy0”:-42.24528,“vz0”:-2.196470917896085,“ax”:-2.7004821343635284,“ay”:7.9248,“az”:-3.634104607169079,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.36288,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Foul”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:315.264},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.17332558339391763,“vy0”:-43.496992000000006,“vz0”:-2.5941595980761374,“ax”:-3.6960824137354713,“ay”:7.9248,“az”:-2.003794548780674,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.35171,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Ball”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:319.516},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.31182770757029676,“vy0”:-42.737024,“vz0”:-2.480658065734613,“ax”:-2.768333256571816,“ay”:7.9248,“az”:-2.292587789305072,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.3584,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Foul”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:323.774},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.2401477028270514,“vy0”:-42.602912,“vz0”:-2.3192190116762075,“ax”:-3.142572496695623,“ay”:7.9248,“az”:-3.1286686445218,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.35961,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“Flyout”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:328.034},{“x0”:0.16764,“y0”:15.24,“z0”:1.8288000000000002,“vx0”:-0.3711068923887307,“vy0”:-41.53001600000001,“vz0”:-2.2974136628320987,“ax”:-2.231300437095701,“ay”:7.9248,“az”:-2.74085048253028,“px”:-0.12192000000000001,“pz”:0.7924800000000001,“sz_bot”:0.45720000000000005,“sz_top”:1.0668,“tof”:0.3696,“s”:“R”,“type”:“4-Seam”,“color”:”#FF4444”,“result”:“SwStr”,“pitcher”:“Early”,“x_norm”:0.4235,“y_norm”:0.1,“t”:332.303}];
+
+// ── SCOREBOARD ────────────────────────────────────────────────
+var sz      = document.getElementById(‘strike-zone’);
+var swz     = document.getElementById(‘swing-zone’);
+var fSvg    = document.getElementById(‘field-svg’);
+var resMain = document.getElementById(‘res-main’);
+var resSub  = document.getElementById(‘res-sub’);
+var g = {r:0,b:0,s:0,o:0,bases:[false,false,false]};
+
+// canSwing is set true by 3D engine during pre_blink + fly phases
+// swung is set true when player taps — prevents double-scoring
+var canSwing = false;
+var swung    = false;
+
+function dotPos(p) {
+// 2D zone position from real pitch coords — same as 3D landing
+var X_SCALE = 0.2159 / 0.75;
+var sz_mid  = (p.sz_bot + p.sz_top) / 2;
+var sz_half = (p.sz_top  - p.sz_bot) / 2;
+var xn = -p.px / X_SCALE;
+var yn = (p.pz - sz_mid) / sz_half;
+return {
+x: ((xn / 1.5) + 0.5) * (sz.offsetWidth  || 80),
+y: (0.5 - (yn / 2.0)) * (sz.offsetHeight || 120),
+strike: Math.abs(xn) <= 0.75 && Math.abs(yn) <= 1.0
+};
+}
+
+function doSwing(clientX, clientY) {
+if (!canSwing || swung || !curPitch) return;
+swung = true;
+canSwing = false;
+
+```
+var rect = sz.getBoundingClientRect();
+var tx = clientX - rect.left;
+var ty = clientY - rect.top;
+var dp = dotPos(curPitch);
+var dist = Math.sqrt((tx-dp.x)*(tx-dp.x)+(ty-dp.y)*(ty-dp.y));
+
+// show bat + ball
+sz.querySelectorAll('.bat-asset,.ball-asset').forEach(function(el){el.remove();});
+var bat = document.createElement('div'); bat.className='bat-asset';
+bat.style.left=tx+'px'; bat.style.top=ty+'px'; sz.appendChild(bat);
+var ball = document.createElement('div'); ball.className='ball-asset';
+ball.style.left=dp.x+'px'; ball.style.top=dp.y+'px'; sz.appendChild(ball);
+
+// timing: how far through flight (negative=early, 0=perfect, positive=late)
+var flightElapsed = phase==='fly' ? (performance.now()-flightStart)/1000 : (phase==='post_land'||phase==='post_climb' ? curPitch.tof+phaseT : -curPitch.tof);
+var tDiff = flightElapsed - curPitch.tof;
+
+if (dist < 30) {
+    var la  = Math.round(((ty-dp.y)/15)*45);
+    var ang = Math.round((dp.x-tx)*2.5);
+    var ev  = Math.round(110-(dist*2.5)-(Math.abs(tDiff)*350));
+    var ft  = Math.round((ev*4.3)*(Math.cos(la*Math.PI/180)));
+    var ttag = tDiff<-0.15 ? 'EARLY' : (tDiff>0.05 ? 'LATE' : 'PERFECT');
+    var ctag = dist<10 ? 'SQUARED' : (dist<20 ? 'SOLID' : 'WEAK');
+    resSub.innerText = '['+ttag+'] '+(tDiff*1000).toFixed(0)+'ms | '+ctag+' | EV:'+ev;
+    handleHit(ft, ang, la);
+} else {
+    resMain.innerText = 'SWING & MISS';
+    resSub.innerText  = 'Miss '+Math.round(dist)+'px';
+    addStrike('SWINGING');
+}
+updateUI();
+```
+
+}
+
+// Called by 3D when ball lands — auto-score if not swung
+function onLanded() {
+var dp = dotPos(curPitch);
+sz.querySelectorAll(’.pitch-dot’).forEach(function(el){el.remove();});
+var dot = document.createElement(‘div’); dot.className=‘pitch-dot’;
+dot.style.left=dp.x+‘px’; dot.style.top=dp.y+‘px’; sz.appendChild(dot);
+dot.style.borderColor = dp.strike ? ‘#f1c40f’ : ‘#5599ff’;
+// keep canSwing open — closes after post_land phase (1s), auto-score fires then
+}
+
+function onPostLand() {
+// called after post_land completes — now auto-score if not swung
+if (!swung) {
+var dp = dotPos(curPitch);
+if (dp.strike) { addStrike(‘TAKEN’); resMain.innerText=‘CALLED STRIKE’; }
+else            { addBall();          resMain.innerText=‘BALL’; }
+updateUI();
+}
+canSwing = false;
+}
+
+// Called by 3D when new pitch starts
+function onPitchStart() {
+canSwing = true;
+swung    = false;
+sz.querySelectorAll(’.bat-asset,.ball-asset,.pitch-dot’).forEach(function(el){el.remove();});
+resMain.innerText = ‘PITCH’;
+resSub.innerText  = ‘’;
+}
+
+swz.addEventListener(‘touchstart’, function(e){
+e.preventDefault(); doSwing(e.touches[0].clientX, e.touches[0].clientY);
+}, {passive:false});
+swz.addEventListener(‘mousedown’, function(e){ doSwing(e.clientX, e.clientY); });
+
+function handleHit(ft,angle,la){
+var move=0,tag=‘OUT’;
+if(Math.abs(angle)>52){if(ft>10&&ft<30){g.o++;g.b=0;g.s=0;resMain.innerText=‘FOUL OUT’;checkState();}else{addStrike(‘FOUL’);resMain.innerText=‘FOUL’;}updateUI();return;}
+if(ft<110){resMain.innerText=la<0?‘GROUND OUT’:‘POP OUT’;}
+else if(ft<225){resMain.innerText=‘SINGLE (’+ft+‘ft)’;move=1;tag=‘1B’;}
+else if(ft<325){resMain.innerText=‘DOUBLE (’+ft+‘ft)’;move=2;tag=‘2B’;}
+else if(ft>=(Math.abs(angle)>35?335:400)){resMain.innerText=‘HOME RUN (’+ft+‘ft)’;move=4;tag=‘HR’;}
+else{resMain.innerText=‘TRIPLE (’+ft+‘ft)’;move=3;tag=‘3B’;}
+if(ft>=110){
+var ds=(ft/400)*50,eY=98-ds,eX=50+angle*(ds/50);
+var ln=document.createElementNS(‘http://www.w3.org/2000/svg’,‘line’);
+ln.setAttribute(‘x1’,‘50’);ln.setAttribute(‘y1’,‘98’);ln.setAttribute(‘x2’,eX);ln.setAttribute(‘y2’,eY);
+ln.setAttribute(‘stroke’,move>0?‘var(–gold)’:’#555’);ln.setAttribute(‘stroke-width’,‘1.5’);
+fSvg.appendChild(ln);
+var dtel=document.createElement(‘div’);dtel.className=‘hit-dot’;dtel.innerText=tag;
+dtel.style.left=eX+’%’;dtel.style.top=eY+’%’;
+document.getElementById(‘field-container’).appendChild(dtel);
+}
+if(move>0){g.b=0;g.s=0;advanceRunners(move);}else{g.o++;g.b=0;g.s=0;checkState();}
+}
+function advanceRunners(n){for(var i=0;i<n;i++){if(g.bases[2])g.r++;g.bases[2]=g.bases[1];g.bases[1]=g.bases[0];g.bases[0]=(i===0&&n<4);if(n===4&&i===3)g.r++;}}
+function addStrike(r){if(r===‘FOUL’){if(g.s<2)g.s++;}else{g.s++;if(g.s>=3){g.s=0;g.b=0;g.o++;resMain.innerText=‘STRIKE THREE’;checkState();}}}
+function addBall(){g.b++;if(g.b>=4){g.b=0;g.s=0;resMain.innerText=‘WALK’;if(g.bases[0]&&g.bases[1]&&g.bases[2])g.r++;else if(g.bases[0]&&g.bases[1])g.bases[2]=true;else if(g.bases[0])g.bases[1]=true;g.bases[0]=true;}}
+function checkState(){if(g.o>=3){g.o=0;g.bases=[false,false,false];}}
+function updateUI(){
+document.getElementById(‘r-val’).innerText=g.r;
+function rd(id,cur,max,cls){var h=’’;for(var i=0;i<max;i++)h+=’<div class="dot '+(i<cur?cls:'')+'"></div>’;document.getElementById(id).innerHTML=h;}
+rd(‘b-dots’,g.b,3,‘b-on’);rd(‘s-dots’,g.s,2,‘s-on’);rd(‘o-dots’,g.o,2,‘o-on’);
+document.getElementById(‘mb-1’).className=‘m-base ‘+(g.bases[0]?‘m-on’:’’);
+document.getElementById(‘mb-2’).className=‘m-base ‘+(g.bases[1]?‘m-on’:’’);
+document.getElementById(‘mb-3’).className=‘m-base ‘+(g.bases[2]?‘m-on’:’’);
+}
+
+// ── THREE.JS ──────────────────────────────────────────────────
+var FENWAY={“outfield_outer”:[[67.701,63.745],[69.593,67.818],[71.487,71.89],[73.381,75.962],[75.18,80.072],[76.482,84.346],[75.583,88.709],[72.867,92.226],[68.892,94.288],[64.866,96.277],[60.839,98.266],[56.818,100.265],[52.795,102.262],[48.777,104.267],[44.756,106.268],[40.73,108.258],[36.71,110.26],[32.685,112.253],[29.169,114.688],[27.807,118.967],[26.34,123.204],[23.474,125.162],[19.14,123.985],[14.809,122.797],[10.474,121.625],[6.137,120.459],[1.799,119.297],[-2.533,118.113],[-6.871,116.949],[-11.201,115.757],[-15.311,115.566],[-18.791,115.618],[-21.983,112.459],[-25.129,109.255],[-28.312,106.086],[-31.475,102.898],[-34.632,99.704],[-37.783,96.505],[-40.999,93.371],[-44.189,90.21],[-47.348,87.018],[-50.52,83.839],[-53.706,80.674],[-56.879,77.496],[-60.058,74.323],[-63.242,71.156],[-66.405,67.969],[-68.596,64.787],[-65.437,61.594],[-62.279,58.402],[-59.12,55.209],[-55.962,52.016],[-52.803,48.823],[-49.644,45.631],[-46.486,42.438],[-44.247,38.789],[-43.616,34.343],[-42.984,29.896],[-42.353,25.45],[-41.721,21.003],[-40.89,16.638],[-38.258,12.999],[-35.625,9.36],[-32.993,5.721],[-30.361,2.083],[-27.728,-1.556],[-25.096,-5.195],[-22.464,-8.834],[-19.831,-12.472],[-17.199,-16.111],[-14.147,-19.214],[-9.985,-20.902],[-5.816,-22.552],[-1.326,-22.469],[3.164,-22.385],[7.647,-22.26],[11.857,-20.697],[16.067,-19.134],[19.591,-16.665],[22.236,-13.035],[24.881,-9.405],[27.526,-5.776],[30.17,-2.146],[32.366,1.744],[34.191,5.847],[36.017,9.95],[37.843,14.053],[39.669,18.156],[41.495,22.259],[43.321,26.362],[45.147,30.465],[46.973,34.568],[48.799,38.672],[49.663,40.29],[51.122,42.125],[53.528,45.176],[56.635,49.152],[60.197,53.765],[63.968,58.726],[67.701,63.745]],“foul_lines”:[[0.137,-4.207],[-2.657,-1.412],[-5.451,1.383],[-8.244,4.178],[-11.038,6.973],[-13.832,9.768],[-16.626,12.563],[-19.419,15.358],[-22.213,18.153],[-25.007,20.948],[-27.8,23.743],[-30.594,26.538],[-33.388,29.333],[-36.182,32.128],[-38.975,34.923],[-41.769,37.718],[-44.563,40.513],[-47.357,43.308],[-50.15,46.103],[-52.944,48.898],[-55.738,51.693],[-58.531,54.488],[-61.325,57.283],[-64.119,60.077],[-66.913,62.872],[-68.698,65.658],[-65.898,63.47],[-63.104,60.675],[-60.311,57.88],[-57.517,55.086],[-54.723,52.291],[-51.929,49.496],[-49.136,46.701],[-46.342,43.906],[-43.548,41.111],[-40.755,38.316],[-37.961,35.521],[-35.167,32.726],[-32.373,29.931],[-29.58,27.136],[-26.786,24.341],[-23.992,21.546],[-21.198,18.751],[-18.405,15.956],[-15.611,13.161],[-12.817,10.366],[-10.024,7.571],[-7.23,4.776],[-4.436,1.981],[-1.642,-0.814],[1.152,-1.58],[3.949,1.212],[6.745,4.004],[9.542,6.796],[12.338,9.589],[15.135,12.381],[17.931,15.173],[20.728,17.965],[23.524,20.757],[26.321,23.549],[29.117,26.342],[31.914,29.134],[34.711,31.926],[37.507,34.718],[40.304,37.51],[43.1,40.302],[45.897,43.095],[48.693,45.887],[51.49,48.679],[54.286,51.471],[57.083,54.263],[59.879,57.056],[62.676,59.848],[65.472,62.64],[68.269,65.432],[67.109,62.93],[64.455,60.015],[61.658,57.223],[58.862,54.431],[56.066,51.639],[53.269,48.846],[50.473,46.054],[47.676,43.262],[44.88,40.47],[42.083,37.677],[39.287,34.885],[36.491,32.093],[33.694,29.301],[30.898,26.508],[28.101,23.716],[25.305,20.924],[22.508,18.131],[19.712,15.339],[16.916,12.547],[14.119,9.755],[11.323,6.962],[8.526,4.17],[5.73,1.378],[2.933,-1.414],[0.137,-4.207]]};
+
+function posAtT(p,t){return{x:p.x0+p.vx0*t+0.5*p.ax*t*t,y:p.y0+p.vy0*t+0.5*p.ay*t*t,z:p.z0+p.vz0*t+0.5*p.az*t*t};}
+function sc2v(x,y,z){return new THREE.Vector3(-x,z,-y);}
+
+var vframe=document.getElementById(‘v-frame’);
+var renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:‘high-performance’});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(vframe.offsetWidth,vframe.offsetHeight);
+renderer.shadowMap.enabled=true;
+vframe.appendChild(renderer.domElement);
+var scene=new THREE.Scene();
+scene.background=new THREE.Color(0x050916);
+scene.fog=new THREE.Fog(0x050916,100,260);
+var rig=new THREE.Group();scene.add(rig);
+var camera=new THREE.PerspectiveCamera(50,vframe.offsetWidth/vframe.offsetHeight,0.05,600);
+camera.position.set(0,0,-0.08);rig.add(camera);
+window.addEventListener(‘resize’,function(){renderer.setSize(vframe.offsetWidth,vframe.offsetHeight);camera.aspect=vframe.offsetWidth/vframe.offsetHeight;camera.updateProjectionMatrix();});
+
+var EYE_HIGH=1.676,EYE_LOW=1.524,EYE_Z=0.46;
+function batPos(s,ey){return new THREE.Vector3(s===‘R’?-0.978:0.978,ey,EYE_Z);}
+function catPos(s){return new THREE.Vector3(s===‘R’?-0.30:0.30,0.61,1.52);}
+
+var gyroOn=false,baseAlpha=null,baseBeta=0,rawAlpha=0,rawBeta=0;
+window.addEventListener(‘deviceorientation’,function(e){if(!gyroOn||e.alpha==null)return;if(baseAlpha===null){baseAlpha=e.alpha;baseBeta=e.beta;}rawAlpha=e.alpha;rawBeta=e.beta;},true);
+(function(){if(typeof DeviceOrientationEvent!==‘undefined’&&typeof DeviceOrientationEvent.requestPermission===‘function’)window.addEventListener(‘touchend’,function(){DeviceOrientationEvent.requestPermission().then(function(r){if(r===‘granted’)gyroOn=true;});},{once:true});else gyroOn=true;})();
+
+scene.add(new THREE.AmbientLight(0x223355,1.2));
+scene.add(new THREE.HemisphereLight(0x55aa33,0x112208,1.0));
+[[-16,-14],[16,-14],[-16,-30],[16,-30],[-30,-55],[30,-55],[-16,2],[16,2],[-40,-20],[40,-20],[0,-65],[0,5]].forEach(function(v){var sl=new THREE.SpotLight(0xfff6d0,3.2,320,0.52,0.2);sl.position.set(v[0],22,v[1]);sl.target.position.set(0,0,-20);sl.castShadow=false;scene.add(sl);scene.add(sl.target);});
+var ballLight=new THREE.PointLight(0xffffff,8.0,3.0);scene.add(ballLight);
+var ballFill=new THREE.PointLight(0x88ccff,3.0,2.0);scene.add(ballFill);
+(function(){var geo=new THREE.PlaneGeometry(400,400);geo.rotateX(-Math.PI/2);scene.add(new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:0x1e5212})));})();
+(function(){var W=220,D=200,segs=44;var geo=new THREE.PlaneGeometry(W,D,segs,1);geo.rotateX(-Math.PI/2);var col=[],pos=geo.attributes.position.array,sw=W/segs;for(var i=0;i<pos.length/3;i++){var stripe=Math.floor((pos[i*3]+W/2)/sw)%2;var b=stripe?0.42:0.26;col.push(b*0.32,b*0.88,b*0.18);}geo.setAttribute(‘color’,new THREE.Float32BufferAttribute(col,3));var m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({vertexColors:true}));m.position.set(0,0.001,-50);scene.add(m);})();
+(function(){var m=new THREE.Mesh(new THREE.CylinderGeometry(1.22,1.52,0.254,24),new THREE.MeshLambertMaterial({color:0x6b3d12}));m.position.set(0,0.127,-18.44);m.castShadow=true;scene.add(m);var r=new THREE.Mesh(new THREE.BoxGeometry(0.61,0.04,0.152),new THREE.MeshLambertMaterial({color:0xffffff}));r.position.set(0,0.267,-18.44);scene.add(r);})();
+(function(){var s=new THREE.Shape(),hw=0.2159;s.moveTo(-hw,hw);s.lineTo(hw,hw);s.lineTo(hw,0);s.lineTo(0,-hw);s.lineTo(-hw,0);s.closePath();var g=new THREE.ShapeGeometry(s);g.rotateX(-Math.PI/2);var m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:0xffffff}));m.position.set(0,0.003,0.05);scene.add(m);})();
+(function(){var mat=new THREE.MeshLambertMaterial({color:0xeeeedd});var h=0.007,t=0.038;function box(x1,x2){var cx=(x1+x2)/2,w=x2-x1,d=1.828;[[cx,0,t,d],[cx,d/2,w,t],[cx,-d/2,w,t],[x1,0,t,d],[x2,0,t,d]].forEach(function(v){var mb=new THREE.Mesh(new THREE.BoxGeometry(v[2],h,v[3]),mat);mb.position.set(v[0],h/2,v[1]);scene.add(mb);});}box(-1.588,-0.368);box(0.368,1.588);})();
+(function(){function wall(pts,y0,wh,col){if(!pts||pts.length<2)return;var v=[];for(var i=0;i<pts.length-1;i++){var ax=pts[i][0],az=-pts[i][1],bx=pts[i+1][0],bz=-pts[i+1][1];v.push(ax,y0,az,bx,y0,bz,ax,y0+wh,az,bx,y0,bz,bx,y0+wh,bz,ax,y0+wh,az);}var wg=new THREE.BufferGeometry();wg.setAttribute(‘position’,new THREE.Float32BufferAttribute(v,3));wg.computeVertexNormals();scene.add(new THREE.Mesh(wg,new THREE.MeshLambertMaterial({color:col,side:THREE.DoubleSide})));}function warnTrack(pts){var v=[],w=1.4;for(var i=0;i<pts.length-1;i++){var ax=pts[i][0],az=-pts[i][1],bx=pts[i+1][0],bz=-pts[i+1][1];var nx=-(bz-az),nz=bx-ax,len=Math.sqrt(nx*nx+nz*nz)||1;var ox=nx/len*w,oz=nz/len*w;v.push(ax,0.003,az,bx,0.003,bz,ax+ox,0.003,az+oz,bx,0.003,bz,bx+ox,0.003,bz+oz,ax+ox,0.003,az+oz);}var wg=new THREE.BufferGeometry();wg.setAttribute(‘position’,new THREE.Float32BufferAttribute(v,3));scene.add(new THREE.Mesh(wg,new THREE.MeshLambertMaterial({color:0xc4894a,side:THREE.DoubleSide})));}var oo=FENWAY.outfield_outer;wall(oo.filter(function(p){return p[0]<-28;}),0,11.3,0x1e5c10);wall(oo.filter(function(p){return p[0]>=-28;}),0,3.7,0x174d0c);warnTrack(oo);})();
+(function(){var v=[];for(var i=0;i<700;i++){var th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1)*0.45,r=300;v.push(Math.sin(ph)*Math.cos(th)*r,Math.cos(ph)*r,Math.sin(ph)*Math.sin(th)*r);}var g2=new THREE.BufferGeometry();g2.setAttribute(‘position’,new THREE.Float32BufferAttribute(v,3));scene.add(new THREE.Points(g2,new THREE.PointsMaterial({color:0xffffff,size:0.55,sizeAttenuation:true})));})();
+
+var ball=new THREE.Mesh(new THREE.SphereGeometry(0.044,32,32),new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xaaaaaa,emissiveIntensity:0.3,roughness:0.4,metalness:0.0}));
+ball.castShadow=true;ball.visible=false;scene.add(ball);
+var FLIGHT_SAMPLES=64;var flightPath=[];
+function sampleFlight(p){flightPath=[];for(var i=0;i<=FLIGHT_SAMPLES;i++){var t=(i/FLIGHT_SAMPLES)*p.tof;var sc=posAtT(p,t);flightPath.push(sc2v(sc.x,sc.y,sc.z));}}
+
+var zoneGroup=null;
+function buildZone(p){
+if(zoneGroup)scene.remove(zoneGroup);
+zoneGroup=new THREE.Group();
+var W=0.4318,H=p.sz_top-p.sz_bot,midY=p.sz_bot+H/2;
+var mat=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide}),t=0.022;
+[[0,p.sz_top,W,t],[0,p.sz_bot,W,t],[-W/2,midY,t,H],[W/2,midY,t,H]].forEach(function(v){
+var m=new THREE.Mesh(new THREE.PlaneGeometry(v[2],v[3]),mat.clone());m.position.set(v[0],v[1],0.05);zoneGroup.add(m);
+});
+scene.add(zoneGroup);
+}
+function colorZone(strike){if(!zoneGroup)return;var c=new THREE.Color(strike?0xff2200:0x0066ff);zoneGroup.children.forEach(function(m){if(m.material)m.material.color.copy(c);});}
+
+// ── STATE — 3D is the single source of truth ──────────────────
+var pitchIdx=0, curPitch=null;
+var phase=‘pre_pause’, phaseT=0, flightStart=0;
+var relPos=new THREE.Vector3(), endPt=new THREE.Vector3();
+var ZONE_LOOK=new THREE.Vector3(0,0,0);
+var rigP=new THREE.Vector3(), rigPTgt=new THREE.Vector3();
+var lookA=new THREE.Vector3(), lookTgt=new THREE.Vector3();
+var fovA=50, fovTgt=50, rigRoll=0, K=1.8;
+
+function loadPitch(){
+// Full game loop reset
+if(pitchIdx>=PITCHES.length){
+pitchIdx=0;
+g={r:0,b:0,s:0,o:0,bases:[false,false,false]};
+fSvg.querySelectorAll(‘line’).forEach(function(el){el.remove();});
+document.getElementById(‘field-container’).querySelectorAll(’.hit-dot’).forEach(function(el){el.remove();});
+updateUI();
+}
+curPitch = PITCHES[pitchIdx++];
+
+```
+// Notify tap game — opens swing window, clears old dots
+onPitchStart();
+updateUI();
+
+buildZone(curPitch);
+ZONE_LOOK.set(0,(curPitch.sz_bot+curPitch.sz_top)/2,0.05);
+relPos.copy(sc2v(curPitch.x0,curPitch.y0,curPitch.z0));
+endPt.copy(sc2v(curPitch.px,1.417*0.3048,curPitch.pz));
+ball.visible=true; ball.position.copy(relPos);
+rigPTgt.copy(batPos(curPitch.s,EYE_HIGH));
+if(pitchIdx===1){rigP.copy(rigPTgt);lookA.copy(relPos);lookTgt.copy(relPos);}
+phase='pre_pause'; phaseT=0;
+```
+
+}
+
+function startFlight(){
+sampleFlight(curPitch);
+var sc0=posAtT(curPitch,0);
+ball.position.copy(sc2v(sc0.x,sc0.y,sc0.z));
+flightStart=performance.now();
+phase=‘fly’; phaseT=0;
+}
+
+var lastT=performance.now();
+function animate(){
+requestAnimationFrame(animate);
+var now=performance.now();
+var dt=Math.min((now-lastT)/1000,0.05);
+lastT=now; phaseT+=dt;
+if(!curPitch){renderer.render(scene,camera);return;}
+
+```
+var bP=batPos(curPitch.s,EYE_HIGH), cP=catPos(curPitch.s);
+
+if(phase==='pre_pause'){
+    rigPTgt.copy(bP); lookTgt.copy(relPos);
+    fovTgt=50-(50-28)*Math.min(phaseT,1.0);
+    ball.position.copy(relPos); ball.visible=true;
+    if(phaseT>=1.0){phase='pre_blink';phaseT=0;}
+}
+else if(phase==='pre_blink'){
+    rigPTgt.copy(bP); lookTgt.copy(relPos); fovTgt=28;
+    ball.position.copy(relPos);
+    ball.visible=(phaseT%0.30)/0.30<0.65;
+    if(phaseT>=0.9){ball.visible=true; startFlight();}
+}
+else if(phase==='fly'){
+    var el=(now-flightStart)/1000;
+    var prog=Math.min(el/curPitch.tof,1.0);
+    var t2=Math.min(el,curPitch.tof);
+    var sc=posAtT(curPitch,t2), pos=sc2v(sc.x,sc.y,sc.z);
+    ball.position.copy(pos);
+    ball.rotation.x+=dt*22; ball.rotation.z+=dt*9;
+    ballLight.position.copy(pos);
+    rigPTgt.lerpVectors(bP,cP,prog);
+    rigPTgt.y=EYE_HIGH+(EYE_LOW-EYE_HIGH)*Math.pow(prog,0.8);
+    lookTgt.lerpVectors(relPos,ZONE_LOOK,Math.min(prog/0.4,1.0));
+    fovTgt=28+(44-28)*prog;
+    rigRoll=(15*Math.PI/180)*Math.sin(prog*Math.PI)*(prog<0.5?1:-1);
+    if(el>=curPitch.tof+0.06){
+        ball.position.copy(endPt);
+        var dp=dotPos(curPitch);
+        colorZone(dp.strike);
+        onLanded();          // notify tap game
+        phase='post_land'; phaseT=0;
+    }
+}
+else if(phase==='post_land'){
+    ball.position.copy(endPt); ball.visible=true;
+    rigPTgt.copy(cP); lookTgt.copy(endPt); fovTgt=44;
+    rigRoll*=(1-Math.min(dt*5,1));
+    if(phaseT>=1.0){onPostLand(); phase='post_climb';phaseT=0;}
+}
+else if(phase==='post_climb'){
+    var t3=Math.min(phaseT,1.0);
+    var pi=Math.max(0,Math.round((1-t3)*(flightPath.length-1)));
+    var bp=flightPath[pi];
+    ball.position.copy(bp); ballLight.position.copy(bp);
+    ball.visible=(phaseT%0.25)/0.25<0.55;
+    rigPTgt.lerpVectors(cP,bP,t3);
+    lookTgt.copy(bp); fovTgt=44+(50-44)*t3;
+    if(phaseT>=1.0){ball.visible=false; loadPitch();}
+}
+
+var jt=now*0.001;
+if(phase==='fly'){
+    rigP.lerp(rigPTgt,Math.min(dt*12,1));
+    lookA.lerp(lookTgt,Math.min(dt*6,1));
+    fovA+=(fovTgt-fovA)*Math.min(dt*8,1);
+    rigP.x+=Math.sin(jt*1.3)*0.003;
+    rigP.y+=Math.sin(jt*0.9)*0.002;
+} else {
+    rigRoll*=(1-Math.min(dt*3,1));
+    rigP.lerp(rigPTgt,Math.min(dt*K,1));
+    lookA.lerp(lookTgt,Math.min(dt*K,1));
+    fovA+=(fovTgt-fovA)*Math.min(dt*K,1);
+}
+if(gyroOn&&baseAlpha!==null&&phase==='fly'){
+    var dA=rawAlpha-baseAlpha;if(dA>180)dA-=360;if(dA<-180)dA+=360;
+    rig.rotation.y=-dA*(Math.PI/180)*0.06;
+    rig.rotation.x=(rawBeta-baseBeta)*(Math.PI/180)*0.05;
+} else {
+    rig.rotation.y*=(1-Math.min(dt*4,1));
+    rig.rotation.x*=(1-Math.min(dt*4,1));
+}
+rig.position.copy(rigP); rig.rotation.z=rigRoll;
+camera.fov=fovA; camera.updateProjectionMatrix();
+camera.lookAt(lookA);
+renderer.render(scene,camera);
+```
+
+}
+
+updateUI();
+loadPitch();
+animate();
+</script>
+
+</body>
+</html>
