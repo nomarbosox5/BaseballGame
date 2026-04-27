@@ -216,10 +216,19 @@ function sc2v(x,y,z){return new THREE.Vector3(-x,z,-y);}
 var vframe=document.getElementById(‘v-frame’);
 var renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:‘high-performance’});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-renderer.setSize(vframe.offsetWidth,vframe.offsetHeight);
 renderer.shadowMap.enabled=true;
 vframe.appendChild(renderer.domElement);
-var scene=new THREE.Scene();
+
+function resizeRenderer(){
+var w=vframe.offsetWidth, h=vframe.offsetHeight;
+if(w===0||h===0) return;
+renderer.setSize(w,h);
+camera.aspect=w/h;
+camera.updateProjectionMatrix();
+}
+// Delay sizing to ensure layout is complete on iOS Safari
+setTimeout(resizeRenderer, 100);
+window.addEventListener(‘resize’, resizeRenderer);
 scene.background=new THREE.Color(0x050916);
 scene.fog=new THREE.Fog(0x050916,100,260);
 var rig=new THREE.Group();scene.add(rig);
